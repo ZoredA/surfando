@@ -223,7 +223,8 @@ function createSliders(){
   }
 
 }
-createMainInput();
+createMainInput('urls');
+createMainInput('seeds');
 createSliders();
 //document.addEventListener("DOMContentLoaded", restoreOptions);
 //document.querySelector("form").addEventListener("submit", saveOptions);
