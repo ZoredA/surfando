@@ -1,0 +1,25 @@
+{
+
+  "manifest_version": 2,
+  "name": "Surfando",
+  "version": "1.0",
+
+  "description": "Plays music that changes according to the website you are on!",
+
+  "icons": {
+    "48": "icons/queue_music_google.svg"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["surfando.js"]
+    }
+  ],
+
+  "options_ui": {
+		"page": "options.html"
+   },	
+
+	"permissions": ["storage"]	
+}
