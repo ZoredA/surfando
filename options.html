@@ -13,16 +13,24 @@
 
     <form>
         <label>Border color<input type="text" id="color" ></label>
-        <div class="">
-          <div id="main_input"></div>
-          <hr class="style17">
-          <div id="sliders"></div>
+        <div class="row">
+          <div class="u-full-width">
+            <select class="two columns" id="playlist_select"></select>
+            <input type="button" class="one column" value="-" id="remove_playlist"></input>
+            <input type="text" class="two columns" value="New Playlist" id="new_playlist_text"></input>
+            <input type="button" class="one column" value="+" id="add_playlist"></input>
+          </div>
+        </div>
+        <div class="row">
+          <div class="u-full-width">
+
+          </div>
+        </div>
+        <div class="" id="settings">
         </div>
         <button type="submit">Save</button>
     </form>
 
-    <script src="options.js"></script>
-
   </body>
-
+  <script src="options.js"></script>
 </html>
