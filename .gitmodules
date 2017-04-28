@@ -1,0 +1,3 @@
+[submodule "spotify-web-api-js"]
+	path = spotify-web-api-js
+	url = https://github.com/JMPerez/spotify-web-api-js.git
