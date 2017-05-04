@@ -128,7 +128,7 @@ function setup(existing_data){
   if (!existing_data) var existing_data = {};
   
   if (existing_data.refresh_token){
-    document.getElementByid('refresh_token').value = existing_data.refresh_token;
+    document.getElementById('refresh_token').value = existing_data.refresh_token;
   }
   var playlists = existing_data.playlists ? existing_data.playlists : getPlaylists();
   

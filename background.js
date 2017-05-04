@@ -1,11 +1,104 @@
-//import * as SpotifyWebApi from 'spotify-web-api-js';
+//This is the main background process file.
+//The toolbar button communicates with this file
+//and this in turn retrieves information from spotify
+//and returns it as needed.
 
-//var spotify = new SpotifyWebApi();
+//initial steps
+//we get token from settings
+//if token is their and we can create an access token we set a please login variable to false.
 var spotifyApi;
-//console.dir(spotifyApi);
-var refresh_token;
+var pleaseLogin=true;
+var userMessage = '';
+var surfando; //contains all the settings. 
+var init_done = false;
+var aud; //The audio object.
 
-var aud;//  = new Audio("https://upload.wikimedia.org/wikipedia/commons/e/eb/Beethoven_Moonlight_1st_movement.ogg");
+//We monitor changes. On change, we update our settings.
+//https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/onChanged
+browser.storage.onChanged.addListener( function (changes, area) {
+  if (area !== "local"){
+    return;
+  }
+  if (changes.surfando){
+    //We changed the surfando settings
+    surfando = changes.surfando.newValue;
+    if (!init_done){
+      init();
+    }
+  }
+});
+
+var init = function(){
+  
+  var onGet = function(item){
+    if (!item || !item.surfando){
+      userMessage = "Please save some settings prior to use.";
+      return;
+    }
+    var refresh_token = item.surfando.refresh_token;
+    if(!refresh_token){
+      userMessage = "Please save a refresh token.";
+      return;
+    }
+    refreshAuth(refresh_token, function(err, data){
+      if (err){
+        userMessage = 'Unable to get access token';
+        init_done = false;
+        return;
+      }
+      var access_token = data.access_token;
+      var spotifyApi = new SpotifyWebApi();
+      spotifyApi.setAccessToken(access_token);
+      surfando = item['surfando'];
+      init_done = true;
+      userMessage = '';
+      console.dir(surfando);
+    });
+  }
+  
+  var onError = function(err){
+    console.dir(err);
+    userMessage = "fatal error retrieving storage";
+    init_done = false;
+  }
+  
+  //This retrieves the playlist settings
+  //as well the token.
+  var getting = browser.storage.local.get('surfando');
+  getting.then(onGet, onError);
+  
+}
+
+var makeRequest = function(url, params, callback){
+  var url = buildUrl(url, params);
+  var pro = fetch(url).then(function(response) {  
+        if (response.status !== 200) {  
+          console.log('Looks like there was a problem. Status Code: ' +  
+            response.status);  
+          console.dir(response);
+          return callback(response);  
+        }
+        // Examine the text in the response  
+        response.json().then(function(data) {  
+          callback(false, data);  
+        });  
+      }  ).catch(function(err) {  
+      console.log('Fetch Error :-S', err);  
+    });
+  return pro;
+}
+
+var refreshAuth = function(refresh_token, callback){
+  //We need to renew our token. So we make a local call to the server do so.
+  makeRequest('http://localhost:8888/refresh_token', {'refresh_token':refresh_token}, 
+    function(err, new_data){
+      console.log(new_data);
+      if (!err){
+        return callback(false, new_data);
+      }
+      return callback(err, new_data);
+    });
+}
 
 //If nothing is started, this will start it.
 var startPlayBack = function(){
@@ -67,20 +160,8 @@ var next = function(){
   current=current+1;
 }
 
-var refreshAuth(refresh_token, callback){
-  //We need to renew our token. So we make a local call to the server do so.
-  makeRequest('http://localhost:8888/refresh_token', {'refresh_token':refresh_token}, 
-    function(err, new_data){
-      console.log(data);
-      if (!err){
-        callback(data);
-      }
-    });
-}
-
 var setup = function(){
   console.log('in setup');
-  
   getSpotifyRecommendation(function(err, data){
     if (err){
       //We see if we can try to renew and call again
@@ -90,25 +171,8 @@ var setup = function(){
       }
     }
     dat = data;
+    console.dir(dat);
   })
-}
-
-var makeRequest = function(url, params, callback){
-  var url = buildUrl(url, params);
-  fetch(url).then(function(response) {  
-        if (response.status !== 200) {  
-          console.log('Looks like there was a problem. Status Code: ' +  
-            response.status);  
-          console.dir(response);
-          return callback(response);  
-        }
-        // Examine the text in the response  
-        response.json().then(function(data) {  
-          callback(false, data);  
-        });  
-      }  ).catch(function(err) {  
-      console.log('Fetch Error :-S', err);  
-    });
 }
 
 //Reference: http://stackoverflow.com/a/1714899
@@ -151,16 +215,7 @@ var handleButton = function(request, sender, sendResponse){
 }
 
 browser.runtime.onMessage.addListener(handleButton);
-
-//This is the main background process file.
-//The toolbar button communicates with this file
-//and this in turn retrieves information from spotify
-//and returns it as needed.
-
-//Run at startup, for initial reading of the settings.
-//Also perhaps run later as needed.
-var readConfig = function(){
-}
+init();
 
 //Sends the seed and any other information to
 //spotify and gets back a playlist that we can play.
@@ -170,12 +225,8 @@ var getSpotifyRecommendation = function(callback, access_token){
   var seed = {
     'seed_artists':['43ZHCT0cAZBISjO8DG9PnE']
   };
-  var access_token= access_token || '';
   
-  var sp = new SpotifyWebApi();
-  sp.setAccessToken(access_token);
-  console.log(sp.getAccessToken());
-  sp.getRecommendations(seed, function(err, data){
+  spotifyApi.getRecommendations(seed, function(err, data){
      if (err){
       callback(err, false);
      }
