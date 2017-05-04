@@ -1,12 +1,30 @@
 <!DOCTYPE html>
-
+<!--
+The audio player needs to be able to do the following:
+-Play and pause a song
+-Adjust volume
+-Track through a song perhaps
+-All of the above are provided by controls in the audio html component.
+-Next Song (Needs a button that can shift to the next song in the playlist
+-Prev Song (maybe)
+-Album cover/song title and some information
+-->
 <html>
   <head>
+  <meta charset="utf-8">
   </head>
   <body>
-    <audio controls="controls"> 
-      <source src="https://p.scdn.co/mp3-preview/277922cde7ef0b195d7c880bfe25a2cfb7bb52a2" type="audio/ogg">
+    <div><label id="surfando_nowplay">Now playing.</label></div>
+    <audio controls="controls" id="player"> 
+      <!-- <source src="https://p.scdn.co/mp3-preview/277922cde7ef0b195d7c880bfe25a2cfb7bb52a2" type="audio/ogg"> -->
+      <source src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Beethoven_Moonlight_1st_movement.ogg" type="audio/ogg">
       no audio support in your browser. :(
     </audio>
+    <button name="setup" class="surfando">setup!</button>
+    <button name="play" class="surfando">Play!</button>
+    <button name="pause" class="surfando">Pause!</button>
+    <button name="next" class="surfando">Next!</button>
+    <div id="surfando_player"></div>
   </body>
+  <script src="player.js"></script>
 </html>
