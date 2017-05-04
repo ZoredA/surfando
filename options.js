@@ -85,6 +85,7 @@ function restoreOptions() {
 
   function setCurrentChoice(result) {
     document.querySelector("#color").value = result.color || "blue";
+    
   }
 
   function onError(error) {
@@ -105,17 +106,42 @@ function getPlaylists(){
   ];
 }
 
-function setup(){
+//This retrieves any settings.
+function retrieveData(callback){
+  
+  //Prior to generation, we can only fill in:
+  //Playlists.
+  //
+  function setCurrentChoice(result) {
+    callback(result['surfando']);
+  }
+
+  function onError(error) {
+    console.log(`Error: ${error}`);
+  }
+  
+  var getting = browser.storage.local.get('surfando');
+  getting.then(setCurrentChoice, onError);
+}
+
+function setup(existing_data){
+  if (!existing_data) var existing_data = {};
+  
+  if (existing_data.refresh_token){
+    document.getElementByid('refresh_token').value = existing_data.refresh_token;
+  }
+  var playlists = existing_data.playlists ? existing_data.playlists : getPlaylists();
+  
   var select = document.getElementById('playlist_select');
-  getPlaylists().forEach(function(item){
+  playlists.forEach(function(item){
     var option = document.createElement('option');
     option.value = item;
     option.textContent = item;
     select.appendChild(option);
     //createMainInput(item);
-    createSettings(item);
-    createMainInput(item);
-    createSliders(item);
+    createSettings(item, existing_data[item]);
+    createMainInput(item, existing_data[item]);
+    createSliders(item, existing_data[item]);
   });
   
   var removeButton = document.getElementById('remove_playlist');
@@ -144,7 +170,7 @@ function setup(){
     hideAllSettingsButOne(selectedPlaylist);
   }
   select.onchange = onChange;
-  
+  onChange();
 }
 
 function hideAllSettingsButOne(exclude){
@@ -163,7 +189,7 @@ function hideAllSettingsButOne(exclude){
   }
 }
 
-function createSettings(id_precursor){
+function createSettings(id_precursor, existing_data){
   //First we grab the main settings div
   var parentDiv = document.getElementById('settings');
   //Then we make a span we can hide or unhide as needed.
@@ -199,13 +225,14 @@ function removeSettings(id_precursor){
   span.remove();
 }
 
-function createMainInput(id_precur){
+function createMainInput(id_precur, existing_data){
+  if (!existing_data) var existing_data = {'urls':['file:///C:/Users/Zored/Documents/Git/surfando/options.html'], 'seeds':['file:///F:/Users/Zored/Documents/Git/surfando/options.html']};
   //var id_precursor = id_precursor || '_';
   var parentDiv = document.getElementById(id_precur + '_main_input');
   //We need a seed box
   //We need a urls box
   
-  var createAddingDivs = function(id_precursor, labelText){
+  var createAddingDivs = function(id_precursor, labelText, previousEntries){
     var row = document.createElement('div');
     row.setAttribute("class", "row");
     parentDiv.appendChild(row);
@@ -218,8 +245,6 @@ function createMainInput(id_precur){
     column.appendChild(label);
     
     row.appendChild(column);
-    
-
     
     //Urls box, we have a small url box for adding and a larger list
     // [type url] (+)
@@ -234,6 +259,11 @@ function createMainInput(id_precur){
       if (!entry || entry === ''){
         return;
       }
+      add_entry(entry); //We do this externally so we can reuse the function for pre-population.
+      input_field.value="";
+    }
+    
+    var add_entry = function(entry){
       var text_div = document.getElementById(id_precursor + '_text_div');
       //We create a new text input and a button and put them into a div
       //so we can set the column size of the div.
@@ -258,7 +288,6 @@ function createMainInput(id_precur){
         entry_div.remove();
       }
       entry_div.appendChild(sub_button);
-      input_field.value="";
     }
     
     var add_button = document.createElement('input');
@@ -274,16 +303,25 @@ function createMainInput(id_precur){
     column.appendChild(add_button);
     column.appendChild(text_div);
     
+    if (previousEntries){
+      previousEntries.forEach( function (entry) {
+        add_entry(entry);
+      });
+    }
+    
   }
   
-  createAddingDivs(id_precur+'_urls', id_precur+' Urls');
+  createAddingDivs(id_precur+'_urls', id_precur+' Urls', existing_data.urls);
 
-  createAddingDivs(id_precur+'_seeds', id_precur+' Seeds');
+  createAddingDivs(id_precur+'_seeds', id_precur+' Seeds', existing_data.seeds);
   
 }
 
 //https://www.w3schools.com/jsref/dom_obj_input.asp
-function createSliders(id_precursor){
+function createSliders(id_precursor, existing_data){
+  if (!existing_data){ existing_data = {'parms':{} } };
+  var parms = existing_data.parms;
+  
   var divs = document.getElementById(id_precursor + '_sliders');
   //divs.appendChild(document.createElement('br'))
   count = 0;
@@ -307,7 +345,6 @@ function createSliders(id_precursor){
       checkbox.value = key;
       checkbox.name = key;
       
-      
       column.appendChild(checkbox);
       
       var input = document.createElement('INPUT');
@@ -318,7 +355,6 @@ function createSliders(id_precursor){
       label.setAttribute("for", input.getAttribute("id"));
       
       column.appendChild(label);
-      
       
       if ('min' in tuneables[key]){
         var min = tuneables[key].min;
@@ -340,7 +376,7 @@ function createSliders(id_precursor){
         column.appendChild(input);
         var output = document.createElement('output');
         output.setAttribute('id', `${input.getAttribute("id")}`+'_output');
-        
+        //output.value = input.value;
         column.appendChild(output);
         
         // var label = document.createElement('label');
@@ -351,6 +387,12 @@ function createSliders(id_precursor){
         input.setAttribute("type", "number");
         column.appendChild(input);
       }
+      
+      if (parms[key]){
+        checkbox.checked = true;
+        input.value = parms[key];
+      }
+      
       //divs.appendChild(document.createElement('br'))
   }
 
@@ -360,13 +402,18 @@ function createSliders(id_precursor){
 function saveSettings(e){
   e.preventDefault();
   console.log('saving');
-  var data = {};
+  var data = {
+    playlists : [],
+    'refresh_token': document.getElementById('refresh_token').value
+  };
+  
   getPlaylists().forEach(function(item){
     data[item] = {
       'urls':[],
       'seeds':[],
       'parms':{}
     };
+    data.playlists.push(item);
     
     var mainDiv = document.getElementById(item + '_main_input');
     
@@ -377,7 +424,6 @@ function saveSettings(e){
     if (urlTexts && urlTexts.length > 0){
       urlTexts.forEach( (node) => {data[item]['urls'].push(node.value);})
     }
-    
     
     var seedClasses = '.' + item + '_seeds_text_field';
     console.log(seedClasses);
@@ -401,12 +447,15 @@ function saveSettings(e){
     //Collect the tuneables.
   })
   console.dir(data);
+  browser.storage.local.set({
+    surfando : data
+  });
 }
 
-setup();
+//setup();
 //createMainInput('urls');
 //createMainInput('seeds');
 //createSliders();
 
-//document.addEventListener("DOMContentLoaded", restoreOptions);
+document.addEventListener("DOMContentLoaded", () => {retrieveData(setup)} );
 document.querySelector("form").addEventListener("submit", saveSettings);

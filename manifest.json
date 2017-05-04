@@ -21,5 +21,26 @@
 		"page": "options.html"
    },	
 
-	"permissions": ["storage"]	
+	"permissions": 
+        [
+            "storage", "activeTab", "webRequest", "alarms",
+            "*://upload.wikimedia.org/*",
+            "*://p.scdn.co/*",
+            "https://api.spotify.com/*",
+            "*://fonts.gstatic.com/*"
+        ],
+    
+    "browser_action":{
+        "default_icon":"icons/queue_music_google.svg",
+        "default_title": "Surfando",
+        "default_popup": "popup/player.html"
+    },
+    "web_accessible_resources": [
+        
+    ],
+    
+    "background": {
+      "page": "background.html"
+    }
+    
 }
