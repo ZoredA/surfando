@@ -10,13 +10,6 @@
     "48": "icons/queue_music_google.svg"
   },
 
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["surfando.js"]
-    }
-  ],
-
   "options_ui": {
 		"page": "options.html"
    },	
