@@ -323,8 +323,25 @@ function createSliders(id_precursor, existing_data){
   var parms = existing_data.parms;
   
   var divs = document.getElementById(id_precursor + '_sliders');
-  //divs.appendChild(document.createElement('br'))
-  count = 0;
+  
+  //We make a title div
+  var title_div = document.createElement('div');
+  var heading = document.createElement('h1');
+  heading.innerHTML = 'Tuneable Options';
+  heading.setAttribute('class', 'u-full-width');
+  title_div.appendChild( heading );
+  title_div.setAttribute('class', 'row');
+  divs.appendChild(title_div);
+  
+  var sub_div = document.createElement('div');
+  var heading = document.createElement('h2');
+  heading.innerHTML = 'Minimum - Maximum Options (Spotify will filter results to be between these values)';
+  heading.setAttribute('class', 'u-full-width');
+  sub_div.appendChild( heading );
+  sub_div.setAttribute('class', 'row');
+  divs.appendChild(sub_div);
+  
+  var count = 0;
   var currentRow;
   for (const key of Object.keys(tuneables)){
       if (count % 3 == 0){
@@ -347,12 +364,9 @@ function createSliders(id_precursor, existing_data){
       
       column.appendChild(checkbox);
       
-      var input = document.createElement('INPUT');
-      input.setAttribute("id", id_precursor+ '_' + key);
-      
       var label = document.createElement('label');
       label.innerHTML = tuneables[key].display || key;
-      label.setAttribute("for", input.getAttribute("id"));
+      
       
       column.appendChild(label);
       
@@ -361,41 +375,104 @@ function createSliders(id_precursor, existing_data){
         var max = tuneables[key].max;
         var middle = (min + max) / 2.0;
         
-        // var label = document.createElement('label');
-        // label.innerHTML = `min:  ${min} `;
-        // label.setAttribute("for", input.getAttribute("id"));
-        // column.appendChild(label);
+        var input_div= document.createElement('div');
+        input_div.setAttribute("id", id_precursor+ '_' + key);
+        column.appendChild(input_div);
         
-        input.setAttribute("type", "range");
-        input.setAttribute("min", min);
-        input.setAttribute("max", max);
-        input.setAttribute("value", middle);
-        input.setAttribute("step",(min+max)/100.0);
-        //http://stackoverflow.com/a/18936328
-        input.setAttribute("oninput", `${input.getAttribute("id")}`+'_output.value='+`${input.getAttribute("id")}`+'.value')
-        column.appendChild(input);
-        var output = document.createElement('output');
-        output.setAttribute('id', `${input.getAttribute("id")}`+'_output');
-        //output.value = input.value;
-        column.appendChild(output);
+        var step = max/100.0;
+        noUiSlider.create(input_div, {
+          'start':[min,max],
+          'tooltips':true,
+          'range': {
+            'min':min,
+            'max':max
+          },
+          'connect': [false, true, false]
+          
+        });
         
-        // var label = document.createElement('label');
-        // label.innerHTML = `max:  ${max}`;
-        // column.appendChild(label);
+        if (parms[key]){
+          checkbox.checked = true;
+          input_div.noUiSlider.set(parms[key]);
+        }
+        
       }
       else{
+        var min_max = document.createElement('div');
+        min_max.setAttribute("id", id_precursor+ '_' + key);
+        //min_max.setAttribute("class", "min_max_div");
+        min_max.classList.add("min_max_div", "one", "column");
+        
+        var input = document.createElement('INPUT');
+        input.setAttribute("id", 'min_' + id_precursor+ '_' + key);
+        
+        var input2 = document.createElement('INPUT');
+        input2.setAttribute("id", 'max_' + id_precursor+ '_' + key);
+        min_max.appendChild(input);
+        min_max.appendChild(input2);
+        
+        
         input.setAttribute("type", "number");
-        column.appendChild(input);
+        input2.setAttribute("type", "number");
+        label.setAttribute("for", input.getAttribute("id"));
+        column.appendChild(min_max);
+        if (parms[key]){
+          checkbox.checked = true;
+          input.value = parms[key][0];
+          input2.value = parms[key][1];
+        }
       }
+      //divs.appendChild(document.createElement('br'))
+  }
+  
+  
+  var sub_div = document.createElement('div');
+  var heading = document.createElement('h2');
+  heading.innerHTML = 'Target Options (Spotify will try to return results close to these values)';
+  heading.setAttribute('class', 'u-full-width');
+  sub_div.appendChild( heading );
+  sub_div.setAttribute('class', 'row');
+  divs.appendChild(sub_div);
+  
+  var count = 0;
+  var currentRow;
+  for (const key_orig of Object.keys(tuneables)){
+    var key = 'target_' + key_orig;
+      if (count % 3 == 0){
+        var row = document.createElement('div');
+        row.setAttribute("class", "row");
+        divs.appendChild(row);
+        currentRow = row;
+      }
+      count += 1;
+      
+      var column = document.createElement('div');
+      column.setAttribute("class", "three columns");
+      currentRow.appendChild(column);
+      
+      var checkbox = document.createElement('INPUT');
+      checkbox.setAttribute('type', 'checkbox');
+      checkbox.setAttribute('class', id_precursor+'_checkbox');
+      checkbox.value = key;
+      checkbox.name = key;
+      
+      column.appendChild(checkbox);
+      
+      var label = document.createElement('label');
+      label.innerHTML = tuneables[key_orig].display || key;
+      column.appendChild(label);
+      
+      var input = document.createElement('input');
+      input.setAttribute("id", id_precursor+ '_' + key);
+      input.setAttribute("type", "number");
+      column.appendChild(input);
       
       if (parms[key]){
         checkbox.checked = true;
         input.value = parms[key];
       }
-      
-      //divs.appendChild(document.createElement('br'))
   }
-
+  
 }
 
 //This retrieves all of the settings for each playlist.
@@ -439,7 +516,21 @@ function saveSettings(e){
     
     checkBoxes.forEach ( (checkbox) => {
       if (checkbox.checked){
-        data[item]['parms'][checkbox.name] = document.getElementById(item + '_' + checkbox.name).value;
+        var elem = document.getElementById(item + '_' + checkbox.name);
+        if (elem.noUiSlider){
+          data[item]['parms'][checkbox.name] = elem.noUiSlider.get();
+        }
+        else{
+          if(elem.classList.contains('min_max_div')){
+            //We should have two elements to deal with
+              data[item]['parms'][checkbox.name] = [ document.getElementById('min_' + item + '_' + checkbox.name).value,
+                document.getElementById('max_' + item + '_' + checkbox.name).value ];
+          }
+          else{
+            data[item]['parms'][checkbox.name] = elem.value;
+          }
+        }
+        
       }
     })
     //Collect the urls

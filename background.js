@@ -34,7 +34,7 @@ browser.storage.onChanged.addListener( function (changes, area) {
         aud.pause(); //to keep from asking for another song when we don't have it.
       }
       playlistManager.reset(surfando);
-      setup();
+      setup({'detail': surfando.playlists[0]});
       if (aud){
         aud.play();
       }
@@ -75,7 +75,7 @@ var init = function(){
           console.dir(err);
           return;
         }
-        var resp = JSON.parse(err.response);
+        var resp = err.response;
         if (resp.error.message.includes('token expire')){
           refreshAuth(refresh_token, (err,data) => {
             if (!err){
@@ -106,7 +106,7 @@ var init = function(){
       init_done = true;
       userMessage = '';
       console.dir(surfando);
-      setup();
+      setup({'detail':playlistManager.default_playlist});
     });
     
     
@@ -238,12 +238,17 @@ var next = function(){
   return info;
 }
 
-var setup = function(){
+var setup = function(e){
   console.log('in setup');
-  console.dir(playlistManager.getParams());
-  getSpotifyRecommendation(playlistManager.getParams(), function(err, data){
+  console.dir(playlistManager.getParams(e.detail));
+  getSpotifyRecommendation(playlistManager.getParams(e.detail), function(err, data){
     if (err){
       console.dir(err);
+      //We call this thing which hopefully will call the error handler we assigned.
+      return playlistManager.addRecommendation(err, false); 
+    }
+    if(!data){
+      console.log('no data');
       return;
     }
     playlistManager.addRecommendation(false, data);
@@ -264,6 +269,19 @@ var buildUrl = function(url, params, prefix){
   return url + '?' + str.join("&");
 }
 
+var previous = function(){
+  var info = playlistManager.previousSong();
+  while(!info.playback_url){
+    info = playlistManager.previousSong(); //We have to skip some songs because they lack preview urls...
+  }
+  console.log('setting aud in previous');
+  console.dir(info);
+  aud.src = info.playback_url;
+  aud.load();
+  aud.play();
+  return info;
+}
+
 var handleButton = function(request, sender, sendResponse){
   if (!init_done){
     console.log('still initializing');
@@ -271,9 +289,6 @@ var handleButton = function(request, sender, sendResponse){
     return sendResponse({'user_message':userMessage});
   }
   switch(request.action){ 
-    case "setup":
-      setup();
-      return sendResponse({});
     case "play":
       play();
       break;
@@ -283,6 +298,9 @@ var handleButton = function(request, sender, sendResponse){
     case "next":
       playlistManager.songEnded(false);
       next();
+      break;
+    case "previous":
+      previous();
       break;
     case "authenticate":
       authenticate();

@@ -1,6 +1,6 @@
 //class that stores the playlists, where we currently are and helps facilitate switching between them
 class PlayListManager {
-    constructor(playlists_info, rec_callback) {
+    constructor(playlists_info, err_callback) {
         console.log('constructing');
         this.playlists_info = playlists_info;
         this.urls = {};
@@ -15,7 +15,7 @@ class PlayListManager {
         //https://open.spotify.com/track/15iosIuxC3C53BgsM5Uggs
         this.id_pattern = new UrlPattern('(http(s)\\://)open.spotify.com/(:category)/(:id)(/*)(?*)') ;
         this.recommendation = {};
-        this.rec_callback = rec_callback; //The function we call when we run out of recommendations.
+        this.err_callback = err_callback; //The function we call when an error hits addRec
         //{playlist: {pinned:[], rolling:[]}
         this.seeds = {};
         this.url = '';
@@ -47,7 +47,7 @@ class PlayListManager {
     }
     
     _send_event(playlist){
-        var event = new CustomEvent('updateRecs', {'playlist':playlist});
+        var event = new CustomEvent('updateRecs', {'detail':playlist});
         document.dispatchEvent(event);
     }
     
@@ -145,7 +145,7 @@ class PlayListManager {
     addRecommendation(err, recs){
       if (err){
         return this.error_callback(err, () => {
-          var event = new CustomEvent('updateRecs', {'playlist':this.current_playlist});
+          var event = new CustomEvent('updateRecs', {'detail':this.current_playlist});
           document.dispatchEvent(event);
         });
       }
@@ -153,6 +153,16 @@ class PlayListManager {
       this.recommendation[playlist] = recs.tracks;
       this.playlist_index[playlist] = 0;
       this._transition_over();
+    }
+    
+    //With this function, we jump back a song and return its details too.
+    previousSong(){
+      var playlist = this._getCurrentPlaylist();
+      if (this.playlist_index[playlist]  < 1 ){
+        return this.getCurrentInfo(); //We can't do anything.
+      }
+      this.playlist_index[playlist] = this.playlist_index[playlist] - 1;
+      return this.getCurrentInfo();
     }
     
     //The song has ended. We update the current playlist's index
@@ -192,10 +202,35 @@ class PlayListManager {
           // 'seed_genres':[],
           // all other parameters
       //}
+      
       var params = {};
-      //We assume that we'd only 
       var playlist = playlist || this._getCurrentPlaylist();
       var temp = this.seeds[playlist].pinned.concat( this.seeds[playlist].rolling );
+      var orig_params = this.playlists_info[playlist].parms;
+      var sanitized_params = {};
+      Object.keys(orig_params).forEach(function (key) {
+        var value = orig_params[key];
+          //we have a range.
+         if (Array.isArray(value)){
+          if (value.length > 2){
+            //shouldn't happen...
+            //we ignore it.
+            console.log('got a larger than expected array');
+            console.log(value);
+            return;
+          }
+          
+          var min_key = 'min_'+key;
+          var max_key = 'max_'+key;
+          params[min_key] = value[0];
+          params[max_key] = value[1];
+          
+         }
+         else{
+           params[key] = value;
+         }
+      });
+      
       console.log(temp);
       temp.forEach( function(seed_info) {
         switch(seed_info.category){
