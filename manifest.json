@@ -27,7 +27,8 @@
             "*://upload.wikimedia.org/*",
             "*://p.scdn.co/*",
             "https://api.spotify.com/*",
-            "*://fonts.gstatic.com/*"
+            "*://fonts.gstatic.com/*",
+            "tabs"
         ],
     
     "browser_action":{

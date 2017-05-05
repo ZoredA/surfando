@@ -12,6 +12,8 @@ var userMessage = '';
 var surfando; //contains all the settings. 
 var init_done = false;
 var aud; //The audio object.
+var playlistManager; //type: PlayListManager
+var renewalTried = false;
 
 //We monitor changes. On change, we update our settings.
 //https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/onChanged
@@ -22,38 +24,92 @@ browser.storage.onChanged.addListener( function (changes, area) {
   if (changes.surfando){
     //We changed the surfando settings
     surfando = changes.surfando.newValue;
+    console.log('settings changed');
     if (!init_done){
       init();
+    }
+    else{
+      //lots of race conditions here...
+      if (aud){
+        aud.pause(); //to keep from asking for another song when we don't have it.
+      }
+      playlistManager.reset(surfando);
+      setup();
+      if (aud){
+        aud.play();
+      }
     }
   }
 });
 
+//The first function run
 var init = function(){
-  
+  //The function run once we retrieved our settins.
   var onGet = function(item){
     if (!item || !item.surfando){
       userMessage = "Please save some settings prior to use.";
+      init_done = false;
       return;
     }
     var refresh_token = item.surfando.refresh_token;
     if(!refresh_token){
       userMessage = "Please save a refresh token.";
+      init_done = false;
       return;
     }
+    surfando = item['surfando'];
+    
+    //Creating a playlist manager. 
+    //The callbacks work as follows:
+    //the playlist manager realizes we've run out of songs, so it makes 
+    //a callback to our getSpotifyRecommendation function to request for more
+    //which in turn returns some songs to the manager.
+    
+    var getReccomendationFunc = (options, callback) => { getSpotifyRecommendation(options, callback); };
+    
+    //A more elaborate error handler that checks if 
+    //an error in the rec retrieval can be fixed by renewing a token.
+    var errorHandler = function(err, callback){
+        if (renewalTried){
+          userMessage="Unable to renew token.";
+          console.dir(err);
+          return;
+        }
+        var resp = JSON.parse(err.response);
+        if (resp.error.message.includes('token expire')){
+          refreshAuth(refresh_token, (err,data) => {
+            if (!err){
+              callback();
+            }
+          });
+        }
+        else{
+          userMessage="Unable to get recommendations.";
+          console.dir(err);
+        }
+    }
+    
+    playlistManager = new PlayListManager(
+      surfando, 
+      getReccomendationFunc,
+      errorHandler);
+    
+    document.addEventListener("updateRecs", setup);
+    
+    spotifyApi = new SpotifyWebApi();
     refreshAuth(refresh_token, function(err, data){
       if (err){
-        userMessage = 'Unable to get access token';
+        console.dir(err);
         init_done = false;
         return;
       }
-      var access_token = data.access_token;
-      var spotifyApi = new SpotifyWebApi();
-      spotifyApi.setAccessToken(access_token);
-      surfando = item['surfando'];
       init_done = true;
       userMessage = '';
       console.dir(surfando);
+      setup();
     });
+    
+    
   }
   
   var onError = function(err){
@@ -71,6 +127,7 @@ var init = function(){
 
 var makeRequest = function(url, params, callback){
   var url = buildUrl(url, params);
+  console.log('making request to ' + url);
   var pro = fetch(url).then(function(response) {  
         if (response.status !== 200) {  
           console.log('Looks like there was a problem. Status Code: ' +  
@@ -84,6 +141,7 @@ var makeRequest = function(url, params, callback){
         });  
       }  ).catch(function(err) {  
       console.log('Fetch Error :-S', err);  
+      callback(err, false);
     });
   return pro;
 }
@@ -94,21 +152,38 @@ var refreshAuth = function(refresh_token, callback){
     function(err, new_data){
       console.log(new_data);
       if (!err){
+        renewalTried=false;
+        var access_token = new_data.access_token;
+        spotifyApi.setAccessToken(access_token);
         return callback(false, new_data);
       }
+      userMessage = 'Unable to get access token';
+      init_done = false;
+      renewalTried=true;
       return callback(err, new_data);
     });
 }
 
 //If nothing is started, this will start it.
 var startPlayBack = function(){
+  var info = playlistManager.getCurrentInfo();
+  while(!info.playback_url){
+    playlistManager.songEnded(false); //We have to skip some songs because they lack preview urls...
+    info = playlistManager.getCurrentInfo();
+  }
   if (!aud){
-    aud = new Audio("https://p.scdn.co/mp3-preview/277922cde7ef0b195d7c880bfe25a2cfb7bb52a2");
+    aud = new Audio(info.playback_url);
     var div = document.getElementById('play_div');
     div.appendChild(aud)//'<audio id="back_player" src="https://p.scdn.co/mp3-preview/277922cde7ef0b195d7c880bfe25a2cfb7bb52a2">');
     //document.getElementById('player').play();
     //aud = document.getElementById('back_player');
-    aud.addEventListener("ended", next, true);
+    aud.addEventListener("ended", 
+      () => {
+        playlistManager.songEnded(true);
+        next();
+      }, 
+    true);
+    aud.load();
   }
   aud.play();
   console.log('shou;ld be playing');
@@ -117,10 +192,7 @@ var startPlayBack = function(){
 //This resumes the current song or
 //starts playback if it wasn't already.
 var play = function(){
-  console.log(spotifyApi);
   startPlayBack();
-  var z = new SpotifyWebApi();
-  console.log(z);
 }
 
 //This pauses the currently playing thing.
@@ -130,7 +202,6 @@ var pause = function(){
   }
   console.log("we should be pausing:/");
   aud.pause();
-  console.dir(aud);
 }
 
 var authenticate = function(){
@@ -154,24 +225,28 @@ var next = function(){
   // aud.src = "https://upload.wikimedia.org/wikipedia/commons/e/eb/Beethoven_Moonlight_1st_movement.ogg";
   // aud.load();
   // aud.play();
-  aud.src = test_data['tracks'][current]['preview_url'];
+  var info = playlistManager.getCurrentInfo();
+  while(!info.playback_url){
+    playlistManager.songEnded(false); //We have to skip some songs because they lack preview urls...
+    info = playlistManager.getCurrentInfo();
+  }
+  console.log('setting aud in next');
+  console.dir(info);
+  aud.src = info.playback_url;
   aud.load();
   aud.play();
-  current=current+1;
+  return info;
 }
 
 var setup = function(){
   console.log('in setup');
-  getSpotifyRecommendation(function(err, data){
+  console.dir(playlistManager.getParams());
+  getSpotifyRecommendation(playlistManager.getParams(), function(err, data){
     if (err){
-      //We see if we can try to renew and call again
-      var resp = err.reponse;
-      if (resp.error.message.includes('token expire')){
-        refreshAuth(refresh_token);
-      }
+      console.dir(err);
+      return;
     }
-    dat = data;
-    console.dir(dat);
+    playlistManager.addRecommendation(false, data);
   })
 }
 
@@ -190,11 +265,15 @@ var buildUrl = function(url, params, prefix){
 }
 
 var handleButton = function(request, sender, sendResponse){
-  
+  if (!init_done){
+    console.log('still initializing');
+    console.log(userMessage);
+    return sendResponse({'user_message':userMessage});
+  }
   switch(request.action){ 
     case "setup":
       setup();
-      break;
+      return sendResponse({});
     case "play":
       play();
       break;
@@ -202,6 +281,7 @@ var handleButton = function(request, sender, sendResponse){
       pause();
       break;
     case "next":
+      playlistManager.songEnded(false);
       next();
       break;
     case "authenticate":
@@ -211,22 +291,32 @@ var handleButton = function(request, sender, sendResponse){
       auth(request.url);
       return sendResponse({});
   }
-  sendResponse({response: "Response from background script", 'aud':aud, "song":aud.src});
+  sendResponse({response: "Response from background script", "song":playlistManager.getCurrentInfo()});
+}
+
+function urlHander(e){
+  if (!init_done){
+    return;
+  }
+  var url = e.detail;
+  console.log('switching to ' + url);
+  playlistManager.switchedUrl(url);
 }
 
 browser.runtime.onMessage.addListener(handleButton);
-init();
+document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("pageChange", urlHander);
 
 //Sends the seed and any other information to
 //spotify and gets back a playlist that we can play.
 //This only returns one recommendation call. Has 
 //to be called multiple times to generate the entire set of recommendations per playlist.
-var getSpotifyRecommendation = function(callback, access_token){
-  var seed = {
-    'seed_artists':['43ZHCT0cAZBISjO8DG9PnE']
-  };
-  
-  spotifyApi.getRecommendations(seed, function(err, data){
+var getSpotifyRecommendation = function(options, callback){
+  console.log('in get recs');
+  console.log('init status:');
+  console.log(init_done);
+  console.dir(options);
+  spotifyApi.getRecommendations(options, function(err, data){
      if (err){
       callback(err, false);
      }
@@ -234,23 +324,6 @@ var getSpotifyRecommendation = function(callback, access_token){
     callback(false, data);
   });
 } 
-
-var dat;
-
-//Updates the seed. If a user played a song for long
-//enough it gets updated into the seed. Otherwise,
-//it is not done so. In addition if a user has set 5 permanent
-//seeds, we can't set a new one, so we do nothing then too.
-//This expects play duration of the song as well as the song
-//in question.
-var updateSeed = function(){
-}
-
-//Returns all of the playlists. 
-var getPlaylists = function(){
-  return ['sup'];
-}
-
 
 //Reference: https://developer.spotify.com/web-api/get-recommendations/
 

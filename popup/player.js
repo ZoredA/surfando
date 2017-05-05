@@ -39,7 +39,18 @@ document.addEventListener("click", (e) => {
     var sending = browser.runtime.sendMessage({'action':e.target.name});
     sending.then( function(response){
       console.log('sent');
-      document.getElementById('surfando_nowplay').innerHTML= response.song;
+      var link = document.createElement('a');
+      link.href = response.song.song_url;
+      link.innerHTML = response.song.song_name
+      var div = document.getElementById('surfando_nowplay');
+      div.innerHTML = '';
+      var text = document.createElement('label');
+      text.innerHTML = response.song.current_playlist + ' - #' + response.song.number + ' ';
+      div.appendChild(text);
+      div.appendChild(link);
+      var text = document.createElement('label');
+      text.innerHTML = ' by ' + response.song.artists_name;
+      div.appendChild(text);
 
       //document.getElementById('surfando_player').appendChild(response.aud);
       },
