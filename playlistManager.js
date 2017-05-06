@@ -202,7 +202,9 @@ class PlayListManager {
           this.seeds[playlist].rolling = this.seeds[playlist].rolling.slice(1); //We slice off the first element
         }
       }
-      this.playlist_index[playlist] = this.playlist_index[playlist] + 1;
+      if (this.playlist_index[playlist] < (this.recommendation[playlist].length - 1) ){
+        this.playlist_index[playlist] = this.playlist_index[playlist] + 1;
+      }
 
       if (this.playlist_index[playlist]  >= (this.recommendation[playlist].length - 1) ){
         console.log('updating recs');
@@ -291,9 +293,15 @@ class PlayListManager {
       var playlist = this._getCurrentPlaylist();
       var index = 0;
       if (this.playlist_index[playlist]  >= this.recommendation[playlist].length){
-        console.log('final element reached. returning first one');
+        console.log('final element reached. returning earlier one');
         console.log(this.playlist_index[playlist]);
-        var info = this.recommendation[playlist][0];
+        var count = 0;
+        var info = this.recommendation[playlist][count];
+        while(!info.preview_url && count < this.recommendation[playlist].length){
+            //Really bad case of problems so we give the first song that has a preview_url
+            var info = this.recommendation[playlist][count];
+            count = count + 1;
+        }
       }
       else{
         index = this.playlist_index[playlist];
@@ -315,8 +323,13 @@ class PlayListManager {
       var index = 1;
       if (this.playlist_index[playlist]  >= this.recommendation[playlist].length){
         console.log('final element reached. returning second one');
-        console.log(this.playlist_index[playlist]);
-        var info = this.recommendation[playlist][1];
+        var count = 1;
+        var info = this.recommendation[playlist][count];
+        while(!info.preview_url && count < this.recommendation[playlist].length){
+            //Really bad case of problems so we give the first song that has a preview_url
+            var info = this.recommendation[playlist][count];
+            count = count + 1;
+        }
       }
       else{
         index = this.playlist_index[playlist] + 1;
