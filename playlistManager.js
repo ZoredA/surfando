@@ -48,6 +48,7 @@ class PlayListManager {
     
     _send_event(playlist){
         if (this._is_failed()){
+            console.log('failed, can not fire');
             return; //We fire no event ;-;
         }
         var event = new CustomEvent('updateRecs', {'detail':playlist});
@@ -146,11 +147,11 @@ class PlayListManager {
     }
     
     _failed(){
-        this._failed = true;
+        this._failed_bool = true;
     }
     
     _is_failed(){
-        if (this._failed){
+        if (this._failed_bool){
             return true;
         }
         return false;

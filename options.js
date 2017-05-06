@@ -226,7 +226,9 @@ function removeSettings(id_precursor){
 }
 
 function createMainInput(id_precur, existing_data){
-  if (!existing_data) var existing_data = {'urls':['file:///C:/Users/Zored/Documents/Git/surfando/options.html'], 'seeds':['file:///F:/Users/Zored/Documents/Git/surfando/options.html']};
+  if (!existing_data) {
+      var existing_data = {'urls':['http://www.google.com'], 'seeds':['https://open.spotify.com/track/77NNZQSqzLNqh2A9JhLRkg']};
+  }
   //var id_precursor = id_precursor || '_';
   var parentDiv = document.getElementById(id_precur + '_main_input');
   //We need a seed box
