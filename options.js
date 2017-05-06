@@ -73,6 +73,8 @@ var tuneables = {
       'display':'Valence'
       }
  };
+ 
+var _playlists = [];
 
 function saveOptions(e) {
   e.preventDefault();
@@ -133,6 +135,7 @@ function setup(existing_data){
   var playlists = existing_data.playlists ? existing_data.playlists : getPlaylists();
   
   var select = document.getElementById('playlist_select');
+  console.log(select);
   playlists.forEach(function(item){
     var option = document.createElement('option');
     option.value = item;
@@ -142,13 +145,20 @@ function setup(existing_data){
     createSettings(item, existing_data[item]);
     createMainInput(item, existing_data[item]);
     createSliders(item, existing_data[item]);
+    _playlists.push(item);
   });
   
   var removeButton = document.getElementById('remove_playlist');
   removeButton.onclick = function(event){
     removeSettings(select.options[select.selectedIndex].textContent);
+    var index = _playlists.indexOf(select.options[select.selectedIndex].textContent);
+    if (index > -1){
+        _playlists.splice(index, 1);
+    }
     select.remove(select.selectedIndex);
-    
+    select.selectedIndex = (select.options.length - 1);
+    var selectedPlaylist = select.options[select.selectedIndex].textContent;
+    hideAllSettingsButOne(selectedPlaylist);
   }
   
   var addButton = document.getElementById('add_playlist');
@@ -160,7 +170,13 @@ function setup(existing_data){
     option.textContent = text;
     select.appendChild(option);
     select.selectedIndex = (select.options.length - 1);
+    
     createSettings(text);
+    createMainInput(text);
+    createSliders(text);
+    
+    _playlists.push(text);
+    hideAllSettingsButOne(text);
   }
   
   var onChange = function(event){
@@ -221,7 +237,7 @@ function createSettings(id_precursor, existing_data){
 }
 
 function removeSettings(id_precursor){
-  var span = docoument.getElementById(id_precursor+'_span');
+  var span = document.getElementById(id_precursor+'_span');
   span.remove();
 }
 
@@ -423,6 +439,11 @@ function createSliders(id_precursor, existing_data){
         else{
             input2.setAttribute("placeholder", "Maximum Value");
         }
+        if (tuneables[key].type === 'float'){
+            input.setAttribute("step", "any");
+            input2.setAttribute("step", "any");
+        }
+        
         min_max.appendChild(input);
         min_max.appendChild(input2);
         
@@ -480,6 +501,33 @@ function createSliders(id_precursor, existing_data){
       var input = document.createElement('input');
       input.setAttribute("id", id_precursor+ '_' + key);
       input.setAttribute("type", "number");
+        var placeholder = '';
+        if (tuneables[key_orig].min !== undefined){
+            input.setAttribute("min", tuneables[key_orig].min);
+            placeholder = String.raw`${tuneables[key_orig].min} <num`;
+        }
+        if (tuneables[key_orig].max){
+            input.setAttribute("max", tuneables[key_orig].max);
+            placeholder = placeholder + String.raw`< ${tuneables[key_orig].max}`;
+        }
+        //placeholder = `${tuneables[key_orig].min ? tuneables[key_orig].min : ''} < val < `
+        input.setAttribute("placeholder", placeholder);
+        
+        if (tuneables[key_orig].type === 'float'){
+
+            if (tuneables[key_orig].max && tuneables[key_orig].max < 1.01){
+                input.setAttribute("step", 0.01);
+                
+            }
+            else{
+                input.setAttribute("step", "any");
+            }
+
+        }
+        if (tuneables[key_orig].type === 'int'){
+            input.setAttribute("step", 1);
+        }
+      
       column.appendChild(input);
       
       if (parms[key]){
@@ -499,7 +547,14 @@ function saveSettings(e){
     'refresh_token': document.getElementById('refresh_token').value
   };
   
-  getPlaylists().forEach(function(item){
+  var select = document.getElementById('playlist_select');
+  var playlists = select.options;
+  console.log('we have ' + playlists.length + ' playlists');
+  console.log(playlists);
+  for (var i = 0; i < playlists.length; i++){
+    var option = playlists[i];
+    console.log(option);
+    var item = option.value;
     data[item] = {
       'urls':[],
       'seeds':[],
@@ -551,7 +606,7 @@ function saveSettings(e){
     //Collect the urls
     //Collect the seeds
     //Collect the tuneables.
-  })
+  }
   console.dir(data);
   browser.storage.local.set({
     surfando : data
