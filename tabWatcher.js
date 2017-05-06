@@ -1,5 +1,5 @@
 //Code based on https://github.com/mdn/webextensions-examples/tree/master/chill-out
-var DELAY = 0.5; //We consider an active tab one for which they've been on for 2 minutes or more.
+var DELAY = 2; //We consider an active tab one for which they've been on for 2 minutes or more.
 
 /*
 Restart alarm for the currently active tab, whenever background.js is run.
@@ -53,7 +53,6 @@ browser.alarms.onAlarm.addListener((alarm) => {
     //browser.pageAction.show(tabs[0].id);
     var tab = tabs[0];
     console.log('alarm hit');
-    console.dir(tab);
     if (tab.url){
       //We fire an event or something that will tell background js to register the new window.
       var event = new CustomEvent('pageChange', {'detail':tab.url});

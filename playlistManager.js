@@ -47,6 +47,9 @@ class PlayListManager {
     }
     
     _send_event(playlist){
+        if (this._is_failed()){
+            return; //We fire no event ;-;
+        }
         var event = new CustomEvent('updateRecs', {'detail':playlist});
         document.dispatchEvent(event);
     }
@@ -142,12 +145,30 @@ class PlayListManager {
       
     }
     
+    _failed(){
+        this._failed = true;
+    }
+    
+    _is_failed(){
+        if (this._failed){
+            return true;
+        }
+        return false;
+    }
+    
     addRecommendation(err, recs){
       if (err){
-        return this.error_callback(err, () => {
-          var event = new CustomEvent('updateRecs', {'detail':this.current_playlist});
-          document.dispatchEvent(event);
-        });
+        var playlist = this.current_playlist;
+        //We just halt trying to get more.
+        this.playlist_index[playlist] = 0;
+        this._failed();
+        this._transition_over();
+        console.log('some major error, please reload');
+        return;
+        // return this.error_callback(err, () => {
+          // var event = new CustomEvent('updateRecs', {'detail':this.current_playlist});
+          // document.dispatchEvent(event);
+        //});
       }
       var playlist = this.current_playlist;
       this.recommendation[playlist] = recs.tracks;
