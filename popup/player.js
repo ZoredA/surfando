@@ -36,16 +36,16 @@ document.addEventListener("click", (e) => {
   if (e.target.classList.contains("surfando")) {
     console.log('surfs up');
     console.log(e.target.name);
-    if (e.target.name === 'test'){
-      var src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Beethoven_Moonlight_1st_movement.ogg"
-      var au = document.getElementById('player');
-      au.src = src;
-      au.load();
-      au.play();
-      return;
-    }
     var sending = browser.runtime.sendMessage({'action':e.target.name});
     sending.then( function(response){
+      if (response.user_message && response.user_message != ''){
+          console.log(response.user_message);
+          var erDiv = document.getElementById('surfando_error');
+          erDiv.innerHtml = '<b>' + response.user_message + '</b>' ;
+      }
+      if (!response.song){
+          return;
+      }
       console.log('sent');
       var link = document.createElement('a');
       link.href = response.song.song_url;

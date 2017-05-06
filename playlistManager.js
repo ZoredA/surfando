@@ -15,7 +15,7 @@ class PlayListManager {
         //https://open.spotify.com/track/15iosIuxC3C53BgsM5Uggs
         this.id_pattern = new UrlPattern('(http(s)\\://)open.spotify.com/(:category)/(:id)(/*)(?*)') ;
         this.recommendation = {};
-        this.err_callback = err_callback; //The function we call when an error hits addRec
+        this.error_callback = err_callback; //The function we call when an error hits addRec
         //{playlist: {pinned:[], rolling:[]}
         this.seeds = {};
         this.url = '';

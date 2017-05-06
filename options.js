@@ -365,7 +365,7 @@ function createSliders(id_precursor, existing_data){
       column.appendChild(checkbox);
       
       var label = document.createElement('label');
-      label.innerHTML = tuneables[key].display || key;
+      label.innerHTML = (tuneables[key].display || key) + (tuneables[key].type ? ` (${tuneables[key].type})` : '');
       
       
       column.appendChild(label);
@@ -405,9 +405,22 @@ function createSliders(id_precursor, existing_data){
         
         var input = document.createElement('INPUT');
         input.setAttribute("id", 'min_' + id_precursor+ '_' + key);
+        if (tuneables[key].typical){
+            input.setAttribute("placeholder", "Min (typical: " + tuneables[key].typical[0] + " )");
+        }
+        else{
+            input.setAttribute("placeholder", "Minimum Value");
+        }
         
         var input2 = document.createElement('INPUT');
         input2.setAttribute("id", 'max_' + id_precursor+ '_' + key);
+        
+        if (tuneables[key].typical){
+            input2.setAttribute("placeholder", "Max (typical: " + tuneables[key].typical[1] + " )");
+        }
+        else{
+            input2.setAttribute("placeholder", "Maximum Value");
+        }
         min_max.appendChild(input);
         min_max.appendChild(input2);
         

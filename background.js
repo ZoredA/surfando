@@ -302,6 +302,9 @@ var handleButton = function(request, sender, sendResponse){
     case "previous":
       previous();
       break;
+    case "open_spotify":
+      open_spotify();
+      break;
     case "authenticate":
       authenticate();
       return sendResponse({});
@@ -310,6 +313,13 @@ var handleButton = function(request, sender, sendResponse){
       return sendResponse({});
   }
   sendResponse({response: "Response from background script", "song":playlistManager.getCurrentInfo()});
+}
+
+var open_spotify = function(){
+  var info = playlistManager.getCurrentInfo();
+  browser.tabs.create({
+    "url":info.song_url
+  });
 }
 
 function urlHander(e){
